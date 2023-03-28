@@ -2,10 +2,15 @@
   "name": "link-preview",
   "version": "1.0.0",
   "description": "link preview server",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "link-preview-js": "^3.0.4"
+  }
 }
