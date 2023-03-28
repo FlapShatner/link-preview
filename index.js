@@ -31,6 +31,10 @@ async function getPreview(url) {
   })
 }
 
+app.get('/', (req, res) => {
+  res.send('Send a GET request to /preview with a URL query parameter.')
+})
+
 app.get('/preview', async (req, res) => {
   const { url } = req.query
 
