@@ -1,11 +1,13 @@
 import { getLinkPreview } from 'link-preview-js'
+import { Cache } from './cache.js'
 import express from 'express'
 import cors from 'cors'
 
 const app = express()
 const PORT = process.env.PORT || 8888
-
+const cache = new Cache()
 app.use(cors())
+app.use(express.json())
 
 async function getPreview(url) {
   // Get the link preview and return it
@@ -13,6 +15,7 @@ async function getPreview(url) {
     headers: {
       'user-agent': 'googlebot',
     },
+    timeout: 3000,
     followRedirects: `manual`,
     handleRedirects: (baseURL, forwardedURL) => {
       // Check if the URL is a valid redirect
@@ -32,21 +35,46 @@ async function getPreview(url) {
 }
 
 app.get('/', (req, res) => {
-  res.send('Send a GET request to /preview with a URL query parameter.')
+  res.send('Send a GET request to /preview with a URL query parameter, dude.')
 })
 
-app.get('/preview', async (req, res) => {
-  const { url } = req.query
+app.post('/preview', async (req, res) => {
+  const urls = req.body
 
-  if (!url) {
-    return res.status(400).json({ error: 'URL query parameter is required.' })
+  const fetchData = async (url) => {
+    const cached = cache.get(url)
+    if (cached) {
+      return cached
+    }
+    try {
+      const data = await getPreview(url)
+      cache.set(url, data, 1000 * 60 * 60)
+      return data
+    } catch (error) {
+      console.error(`Error fetching OpenGraph tags for ${url}:`, error)
+      // Return a default object with an error message
+      return {
+        id: null,
+        url: null,
+        title: 'Error fetching preview',
+        description: `Could not fetch preview for ${url}`,
+        error: true,
+      }
+    }
   }
 
   try {
-    const ogTags = await getPreview(url)
+    const ogTags = await Promise.all(
+      urls.map(async (url) => {
+        return {
+          id: url.id,
+          url: await fetchData(url.url),
+        }
+      })
+    )
     res.json(ogTags)
   } catch (error) {
-    console.error(`Error fetching OpenGraph tags from ${url}:`, error)
+    console.error(`Error fetching OpenGraph tags:`, error)
     res.status(500).json({ error: 'Failed to fetch OpenGraph tags.' })
   }
 })
